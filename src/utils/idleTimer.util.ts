@@ -1,5 +1,5 @@
-import { PATIENT_EVENT, PATIENT_STATUS } from "../constants/socket-events/socket.constants";
-import { patientData, sessions } from "./session.util";
+import { PATIENT_EVENT, PATIENT_STATUS } from "../constants/socket-events/socket.constants.js";
+import { patientData, sessions } from "./session.util.js";
 
 const IDLE_TIMEOUT_SECOND = 10 * 1000;
 export const sessionTimers = new Map<string, NodeJS.Timeout>();

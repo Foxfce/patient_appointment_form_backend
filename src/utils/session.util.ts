@@ -1,4 +1,4 @@
-import { PATIENT_STATUS } from "../constants/socket-events/socket.constants";
+import { PATIENT_STATUS } from "../constants/socket-events/socket.constants.js";
 
 export type sessionId = string;
 

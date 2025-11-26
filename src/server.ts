@@ -3,7 +3,6 @@ import http from 'node:http';
 import { Server } from 'socket.io';
 import dotenv from 'dotenv';
 import {
-    ADMIN_EVENT,
     GENERAL_EVENT,
     PATIENT_EVENT,
     PATIENT_STATUS,
