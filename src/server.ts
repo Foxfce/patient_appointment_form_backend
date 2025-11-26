@@ -3,12 +3,13 @@ import http from 'node:http';
 import { Server } from 'socket.io';
 import dotenv from 'dotenv';
 import {
+    ADMIN_EVENT,
     GENERAL_EVENT,
     PATIENT_EVENT,
     PATIENT_STATUS,
     USER_ROLE,
 } from './constants/socket-events/socket.constants.js';
-import { patientData, sessions } from './utils/session.util.js';
+import { patientData, sessions, currentSessions, trimSessions } from './utils/session.util.js';
 import { sessionTimers, setIdleTimer } from './utils/idleTimer.util.js';
 
 dotenv.config();
@@ -17,7 +18,7 @@ const app = express();
 const server = http.createServer(app);
 
 
-const io = new Server(server, {
+export const io = new Server(server, {
     cors: {
         origin: '*', // **replace with vercel domain later**
         methods: ['GET', 'POST']
@@ -36,12 +37,33 @@ io.on('connection', (socket) => {
 
         // Send current snapshot to newly joined staff
         if (role === USER_ROLE.ADMIN) {
-            const snapshot = sessions.get(sessionId) || null;
-            socket.emit(GENERAL_EVENT.SNAPSHOT, snapshot);
+            socket.join(USER_ROLE.ADMIN);
+            const arrAllSession = Array.from(currentSessions.values());
+            socket.emit(GENERAL_EVENT.UPDATE_SESSION, arrAllSession);
         }
 
         if (role === USER_ROLE.PATIENT) {
+            currentSessions.set(socket.id, { sessionId, status: PATIENT_STATUS.ACTIVE });
+            const arrAllSession = Array.from(currentSessions.values());
+            io.to(USER_ROLE.ADMIN).emit(GENERAL_EVENT.UPDATE_SESSION, arrAllSession);
+        }
 
+        trimSessions();
+        const arrAllSession = Array.from(currentSessions.values());
+        io.to(USER_ROLE.ADMIN).emit(GENERAL_EVENT.UPDATE_SESSION, arrAllSession);
+    });
+
+    socket.on(GENERAL_EVENT.LEAVE, ({ prevSessionId }) => {
+        // if(!sessionId) return;
+        console.log(`socket ${socket.id} leave session ${prevSessionId}`);
+        socket.leave(prevSessionId);
+    });
+
+    socket.on(ADMIN_EVENT.REQUEST_SESSION, ({ sessionId, role }) => {
+        if (role === USER_ROLE.ADMIN) {
+            socket.join(sessionId);
+            const snapshot = sessions.get(sessionId) || null;
+            socket.emit(GENERAL_EVENT.SNAPSHOT, snapshot);
         }
     });
 
@@ -65,7 +87,6 @@ io.on('connection', (socket) => {
     socket.on(PATIENT_EVENT.STATUS, ({ sessionId, status }) => {
         const prev = sessions.get(sessionId) || {};
         console.log(status);
-        // console.log(prev);
 
         const newState: patientData = {
             ...prev,
@@ -73,13 +94,15 @@ io.on('connection', (socket) => {
             lastUpdated: Date.now()
         };
         sessions.set(sessionId, newState);
+        currentSessions.set(socket.id, { sessionId, status });
         socket.to(sessionId).emit(PATIENT_EVENT.STATUS, { status, lastUpdated: newState.lastUpdated });
-
+        socket.to(USER_ROLE.ADMIN).emit(PATIENT_EVENT.STATUS_CARD, { sessionId, status })
+        
         // Reset timer each filling event
         if (status === PATIENT_STATUS.FILLING) {
             setIdleTimer(sessionId, socket);
         }
-
+        
         // Remove timer when submitted
         if (status === PATIENT_STATUS.SUBMIT) {
             if (sessionTimers.has(sessionId)) {
@@ -88,23 +111,28 @@ io.on('connection', (socket) => {
             }
         }
     });
-
+    
     // socket.on(PATIENT_EVENT.)
-
+    
     socket.on('disconnect', () => {
         console.log('socket disconnect', socket.id);
         const role = socket.data.role;
         const sessionId = socket.data.sessionId;
-
+        
         if (role === USER_ROLE.PATIENT) {
             const prev = sessions.get(sessionId);
-            if (prev?.status === PATIENT_STATUS.SUBMIT) return;
+
+            if (prev.status === PATIENT_STATUS.SUBMIT) return;
             const newState: patientData = {
                 ...prev,
                 status: PATIENT_STATUS.INACTIVE,
                 lastUpdated: Date.now()
             }
             sessions.set(sessionId, newState);
+
+            currentSessions.set(socket.id, { sessionId: sessionId, status: PATIENT_STATUS.INACTIVE });
+
+            io.to(USER_ROLE.ADMIN).emit(PATIENT_EVENT.STATUS_CARD, { sessionId, status: PATIENT_STATUS.INACTIVE })
             io.to(sessionId).emit(PATIENT_EVENT.STATUS, { status: newState.status, lastUpdated: newState.lastUpdated });
         }
     });

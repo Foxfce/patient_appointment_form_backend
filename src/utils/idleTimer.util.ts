@@ -1,4 +1,4 @@
-import { PATIENT_EVENT, PATIENT_STATUS } from "../constants/socket-events/socket.constants.js";
+import { PATIENT_EVENT, PATIENT_STATUS, USER_ROLE } from "../constants/socket-events/socket.constants.js";
 import { patientData, sessions } from "./session.util.js";
 
 const IDLE_TIMEOUT_SECOND = 10 * 1000;
@@ -21,6 +21,7 @@ export const setIdleTimer = (sessionId: string, socket: any) => {
             status: PATIENT_STATUS.IDLE, 
             lastUpdated: newState.lastUpdated 
         });
+        socket.to(USER_ROLE.ADMIN).emit(PATIENT_EVENT.STATUS_CARD, { sessionId, status: newState.status });
 
         console.log(`[IDLE] Session ${sessionId} timed out and set to IDLE.`);
         sessionTimers.delete(sessionId);
