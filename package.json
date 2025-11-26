@@ -4,8 +4,9 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "start": "node server.ts",
-    "dev": "npx tsx server.ts --watch",
+    "build": "npx tsc",
+    "start": "node dist/server.js",
+    "dev": "npx tsx src/server.ts --watch",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

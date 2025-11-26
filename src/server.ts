@@ -8,9 +8,9 @@ import {
     PATIENT_EVENT,
     PATIENT_STATUS,
     USER_ROLE,
-} from './constants/socket-events/socket.constants';
-import { patientData, sessions } from './utils/session.util';
-import { sessionTimers, setIdleTimer } from './utils/idleTimer.util';
+} from './constants/socket-events/socket.constants.js';
+import { patientData, sessions } from './utils/session.util.js';
+import { sessionTimers, setIdleTimer } from './utils/idleTimer.util.js';
 
 dotenv.config();
 
